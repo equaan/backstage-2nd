@@ -1,0 +1,140 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: user-auth-service
+  title: User Authentication Service
+  description: Service responsible for user authentication and authorization
+  tags:
+    - authentication
+    - platform
+    - microservice
+  annotations:
+    github.com/project-slug: equaan/user-auth-service
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: identity-system
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: api-gateway
+  title: API Gateway
+  description: Gateway service that routes requests to various backend services
+  tags:
+    - api-gateway
+    - platform
+    - infrastructure
+  annotations:
+    github.com/project-slug: equaan/api-gateway
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: api-infrastructure
+  dependsOn:
+    - component:user-auth-service
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: config-service
+  title: Configuration Management Service
+  description: Service responsible for managing application configuration and secrets
+  tags: 
+    - configuration
+    - platform
+    - infrastructure
+  annotations:
+    github.com/project-slug: equaan/config-service
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: api-infrastructure
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: customer-portal
+  title: Customer Portal Web Application
+  description: Frontend application for customers to access their accounts and services
+  tags:
+    - frontend
+    - react
+    - customer-facing
+  annotations:
+    github.com/project-slug: equaan/customer-portal
+spec:
+  type: website
+  lifecycle: production
+  owner: frontend-team
+  system: customer-experience
+  dependsOn:
+    - component:api-gateway
+    - component:user-auth-service
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: admin-dashboard
+  title: Admin Dashboard
+  description: Internal dashboard for administrators to manage users and monitor system health
+  tags:
+    - frontend
+    - admin
+    - dashboard
+  annotations:  
+    github.com/project-slug: equaan/admin-dashboard
+spec:
+  type: website
+  lifecycle: production
+  owner: frontend-team
+  system: admin-tools
+  dependsOn:
+    - component:api-gateway
+    - component:user-auth-service
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: shared-ui-components
+  title: Shared UI Components Library
+  description: A library of reusable UI components for frontend applications
+  tags:
+    - react
+    - library
+    - design-system
+  annotations:
+    github.com/project-slug: equaan/shared-ui-components
+spec:
+  type: library
+  lifecycle: production
+  owner: frontend-team
+  system: design-system
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: api-client-sdk
+  title: API Client SDK
+  description: A client SDK for interacting with backend APIs
+  tags:
+    - sdk
+    - library
+    - typescript
+  annotations:
+    github.com/project-slug: equaan/api-client-sdk
+spec:
+  type: library
+  lifecycle: production
+  owner: platform-team 
+  system: developer-tools

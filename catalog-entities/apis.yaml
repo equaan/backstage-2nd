@@ -1,0 +1,167 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  namespace: default
+  name: user-auth-api
+  title: User Authentication API
+  description: API for user authentication and authorization
+  tags:
+    - authentication
+    - rest
+    - oauth2
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-team
+  system: identity-system
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: User Authentication API
+      version: 1.0.0
+      description: Handles user login, logout, and token management
+    paths:
+      /auth/login:
+        post:
+          summary: User login endpoint
+          description: Authenticates a user and returns a JWT token
+      /auth/logout:
+        post:
+          summary: User logout endpoint
+      /auth/profile:
+        get:
+          summary: Get user profile
+      /auth/refresh:
+        post:
+          summary: Refresh JWT token
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  namespace: default
+  name: customer-data-api
+  title: Customer Data API
+  description: API for managing customer data and interactions
+  tags:
+    - customer-data
+    - rest
+    - crud
+spec:
+  type: openapi
+  lifecycle: production
+  owner: frontend-team
+  system: customer-experience
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Customer Data API
+      version: 2.1.0
+      description: Provides endpoints for managing customer data and interactions
+    paths:
+      /customers/{id}:
+        get:
+          summary: retrieve customer profile by ID
+        put:
+          summary: Update customer profile information
+        delete:
+          summary: Delete a customer
+      /customers/{id}/preferences:
+        get:
+          summary: Get customer details
+        post:
+          summary: Update customer preferences
+      /customers/{id}/orders:
+        get:
+          summary: Get customer orders
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  namespace: default
+  name: config-management-api
+  title: Configuration Management API
+  description: API for managing application configuration and secrets
+  tags:
+    - configuration
+    - rest
+    - internal
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-team
+  system: api-infrastructure
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Configuration Management API
+      version: 1.0.0
+      description: Provides endpoints for managing application configuration and secrets
+    paths:
+      /config/{app-name}:
+        get:
+          summary: Retrieve application configuration
+          description: Get the current configuration for a specific application
+      /config/{app-name}/features:
+        get:
+          summary: Retrieve feature flags
+        post:
+          summary: Update feature flags
+      /health:
+        get:
+          summary: Retrieve health status
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  namespace: default
+  name: admin-reporting-api
+  title: Admin Reporting API
+  description: API for generating reports and analytics for admin users
+  tags:
+    - reporting
+    - analytics
+    - graphql
+spec:
+  type: graphql
+  lifecycle: production
+  owner: platform-team
+  system: admin-tools
+  definition: |
+    type Query {
+      """Get user activity report for a specific time range"""
+      userMetrics(startDate: String!, endDate: String!): UserMetrics
+
+      """Get system performance data"""
+      systemHealth: SystemHealth
+
+      """Search customers with flexible filters"""
+      searchCustomers(filters: CustomerFilters!): [Customer]
+    }
+
+    type UserMetrics {
+      totalLogins: Int!
+      activeUsers: Int!
+      newRegistrations: Int!
+    }
+
+    type SystemHealth {
+      uptime: Float!
+      responseTime: Float!
+      errorRate: Float!
+    }
+
+    type Customer {
+      id: ID!
+      name: String!
+      email: String!
+      lastLogin: String
+    }
+
+    input CustomerFilters {
+      name: String
+      registrationDate: String
+      status: String
+    }

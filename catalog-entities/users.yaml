@@ -1,0 +1,69 @@
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  namespace: default
+  name: alice-platform
+  title: Alice Johnson
+  description: Senior platform engineer
+spec:
+  profile:
+    displayName: Alice Johnson
+    email: alice.johnson@company.com
+  memberOf:
+    - platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  namespace: default
+  name: bob-platform
+  title: Bob Smith
+  description: Junior platform engineer
+spec:
+  profile:
+    displayName: Bob Smith
+    email: bob.smith@company.com
+  memberOf:
+    - platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  namespace: default
+  name: emma-techlead
+  title: Emma Wilson
+  description: principal engineer and tech lead
+spec:
+  profile:
+    displayName: Emma Wilson
+    email: emma.wilson@company.com
+  memberOf:
+    - platform-team
+    - frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  namespace: default
+  name: carol-platform
+  title: Carol Davis
+  description: senior Frontend engineer
+spec:
+  profile:
+    displayName: Carol Davis
+    email: carol@company.com
+  memberOf:
+    - frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: 
+  name: david-frontend
+  title: David Lee
+  description: Junior frontend engineer
+spec:
+  profile:
+    displayName: David Lee
+    email: david@company.com
+  memberOf:
+    - frontend-team

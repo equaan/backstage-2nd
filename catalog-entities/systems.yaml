@@ -1,0 +1,47 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  namespace: default
+  name: identity-system
+spec:
+  owner: platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  namespace: default
+  name: api-infrastructure
+spec:
+  owner: platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  namespace: default
+  name: customer-experience
+spec:
+  owner: frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  namespace: default
+  name: admin-tools
+spec:
+  owner: frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  namespace: default
+  name: design-system
+spec:
+  owner: frontend-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  namespace: default
+  name: developer-tools
+spec:
+  owner: platform-team

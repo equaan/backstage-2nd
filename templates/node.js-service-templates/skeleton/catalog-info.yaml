@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  namespace: default
+  name: "{{ name }}"
+  description: "{{ description }}"
+  tags:
+    - nodejs
+    - microservice
+spec:
+  type: service
+  lifecycle: production
+  owner: "{{ owner | default('platform-team') }}"
+  system: developer-tools

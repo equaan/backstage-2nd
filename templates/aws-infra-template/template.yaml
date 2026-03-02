@@ -1,0 +1,92 @@
+#Note: doing myself from here
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: aws-infra-template
+  title: AWS Infrastructure Template
+  description: Scaffold Terraform infra for a new client.
+  tags:
+    - aws
+    - terraform
+    - infrastructure
+spec:
+  owner: devops
+  type: service
+  parameters:
+    - title: Client Configuration
+      required:
+        - client_name
+        - project_name
+        - aws_region
+        - environment
+        - description
+      properties:
+        client_name:
+          title: Client Name
+          type: string
+          description: Name of the client (e.g. client3)
+
+        project_name:
+          title: Project Name
+          type: string
+          description: Name of the project (e.g. company-a) 
+
+        aws_region:
+          title: AWS Region
+          type: string
+          default: us-east-1
+
+        environment:
+          title: Environment
+          type: string
+          enum:
+            - dev
+            - staging
+            - prod
+        description:
+          title: description
+          type: string
+          ui:widget: textarea
+    
+    - title: Repository Configuration
+      required:
+        - github_owner
+      properties:
+        github_owner:
+          title: GitHub Organization
+          type: string
+          
+        
+  
+  steps:
+    - id: fetch-base
+      name: Fetch Terraform Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          client_name: ${{ parameters.client_name }}
+          aws_region: ${{ parameters.aws_region }}
+          environment: ${{ parameters.environment }}
+    
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=${{ parameters.github_owner }}&repo=${{ parameters.project_name }}-infra-${{ parameters.environment }}
+        defaultBranch: main
+        description: Infrastructure repo for ${{ parameters.client_name }}
+
+  output:
+    text:
+      - title: Infrastructure Repository Created
+        content: |
+          Project: ${{ parameters.project_name }}
+          Client: ${{ parameters.client_name }}
+          Environment: ${{ parameters.environment }}
+          Repo: ${{ steps.publish.output.repoUrl }}
+    links:
+      - title: View Repository
+        url: ${{ steps.publish.output.repoUrl }}
+        icon: github
+  
