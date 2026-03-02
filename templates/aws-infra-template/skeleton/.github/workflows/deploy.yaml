@@ -1,0 +1,44 @@
+name: 'Terraform Deploy'
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    name: 'Terraform Apply'
+    runs-on: ubuntu-latest
+    
+    env:
+      # Backstage replaces this with the actual region (e.g., us-east-1)
+      AWS_REGION: "${{ values.aws_region }}"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Replace with your actual Role ARN
+          role-to-assume: arn:aws:iam::276451917813:role/Github_actions-administrator_access
+          # We use the env variable defined above
+          aws-region: ${{ '${{ env.AWS_REGION }}' }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -input=false
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false

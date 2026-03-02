@@ -1,0 +1,118 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  namespace: default
+  name: engineering-org
+  title: Engineering Organization
+  description: The engineering organization responsible for all development efforts
+  tags:
+    - engineering
+    - organization
+spec:
+  type: organization
+  profile:
+    displayName: Engineering
+    email: engineering@company.com
+  children:
+    - platform-team
+    - frontend-team
+    - backend-team
+    - devops-team
+    - data-team
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  namespace: default
+  name: platform-team
+  title: platform team
+  description: team responsible for platform development and maintenance
+  tags:
+    - infrastructure
+    - platform
+spec:
+  type: team
+  profile:
+    displayName: Platform Team
+    email: platform@company.com
+  children: []
+  parent: engineering-org
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  namespace: default
+  name: frontend-team
+  title: Frontend Development Team
+  description: team responsible for frontend development and maintenance
+  tags:
+    - frontend
+    - web
+spec:
+  type: team
+  profile:
+    displayName: Frontend Team
+    email: frontend@company.com
+  children: []
+  parent: engineering-org
+
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  namespace: default
+  name: backend-team
+  title: Backend Development Team
+  description: team responsible for backend development and maintenance
+  tags:
+    - backend
+    - logic
+spec:
+  type: team
+  profile:
+    displayName: Backend Team
+    email: backend@company.com
+  children: []
+  parent: engineering-org
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  namespace: default
+  name: devops-team
+  title: DevOps Team
+  description: team responsible for DevOps and infrastructure management
+  tags:
+    - infrastructure
+    - devops
+spec:
+  type: team
+  profile:
+    displayName: DevOps Team
+    email: devops@company.com
+  children: []
+  parent: engineering-org
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  namespace: default
+  name: data-team
+  title: Data Team
+  description: team responsible for data management and analytics
+  tags:
+    - data
+    - analytics
+spec:
+  type: team
+  profile:
+    displayName: Data Team
+    email: data@company.com
+  children: []
+  parent: engineering-org
+---
