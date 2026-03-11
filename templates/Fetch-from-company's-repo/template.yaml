@@ -240,8 +240,11 @@ spec:
                 - cicd_tool
 
     # ─────────────────────────────────────────
-    # PAGE 3: AWS Region + Resource Selection + Config
-    # iac_resources is a string enum on THIS page — proven oneOf pattern
+    # PAGE 3: AWS Region + Resource Selection
+    # Uses AwsResourcePicker custom field extension.
+    # No combinations needed — component handles everything.
+    # To add a new service: just add it to SERVICE_DEFINITIONS
+    # in AwsResourcePicker.tsx — zero template changes needed.
     # ─────────────────────────────────────────
     - title: Step 3 - Resource Confirmation
       required:
@@ -264,279 +267,16 @@ spec:
             - AP Southeast (Singapore)
 
         iac_resources:
-          title: Select Resources to Provision
-          type: string
-          enum:
-            - vpc
-            - ec2
-            - s3
-            - rds
-            - vpc_ec2
-            - vpc_s3
-            - vpc_rds
-            - ec2_s3
-            - ec2_rds
-            - s3_rds
-            - vpc_ec2_s3
-            - vpc_ec2_rds
-            - vpc_s3_rds
-            - ec2_s3_rds
-            - vpc_ec2_s3_rds
-          enumNames:
-            - VPC only
-            - EC2 only
-            - S3 only
-            - RDS only
-            - VPC + EC2
-            - VPC + S3
-            - VPC + RDS
-            - EC2 + S3
-            - EC2 + RDS
-            - S3 + RDS
-            - VPC + EC2 + S3
-            - VPC + EC2 + RDS
-            - VPC + S3 + RDS
-            - EC2 + S3 + RDS
-            - VPC + EC2 + S3 + RDS
-
-        # Top-level config fields — shown conditionally via oneOf below
-        vpc_cidr:
-          title: VPC CIDR Block
-          type: string
-          default: "10.0.0.0/16"
-        ec2_instance_type:
-          title: EC2 Instance Type
-          type: string
-          enum: [t2.micro, t3.micro, t3.small]
-          default: t2.micro
-        s3_versioning:
-          title: Enable S3 Versioning
-          type: boolean
-          default: false
-        rds_engine:
-          title: RDS Engine
-          type: string
-          enum: [mysql, postgres]
-          enumNames: [MySQL, PostgreSQL]
-          default: mysql
-
-      dependencies:
-        iac_resources:
-          oneOf:
-            - properties:
-                iac_resources:
-                  enum: [vpc]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-
-            - properties:
-                iac_resources:
-                  enum: [ec2]
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-
-            - properties:
-                iac_resources:
-                  enum: [s3]
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-
-            - properties:
-                iac_resources:
-                  enum: [rds]
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_ec2]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_s3]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_rds]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [ec2_s3]
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-
-            - properties:
-                iac_resources:
-                  enum: [ec2_rds]
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [s3_rds]
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_ec2_s3]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_ec2_rds]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_s3_rds]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [ec2_s3_rds]
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
-
-            - properties:
-                iac_resources:
-                  enum: [vpc_ec2_s3_rds]
-                vpc_cidr:
-                  title: VPC CIDR Block
-                  type: string
-                  default: "10.0.0.0/16"
-                ec2_instance_type:
-                  title: EC2 Instance Type
-                  type: string
-                  enum: [t2.micro, t3.micro, t3.small]
-                  default: t2.micro
-                s3_versioning:
-                  title: Enable S3 Versioning
-                  type: boolean
-                  default: false
-                rds_engine:
-                  title: RDS Engine
-                  type: string
-                  enum: [mysql, postgres]
-                  enumNames: [MySQL, PostgreSQL]
-                  default: mysql
+          title: AWS Resources
+          type: object
+          description: Select the AWS resources you want to provision and configure them
+          ui:field: AwsResourcePicker
 
   # ─────────────────────────────────────────
   # STEPS
+  # iac_resources is now an object from AwsResourcePicker:
+  #   parameters.iac_resources.resources → "vpc_ec2" string
+  #   parameters.iac_resources.config.vpc_cidr → config values
   # ─────────────────────────────────────────
   steps:
 
@@ -554,47 +294,47 @@ spec:
 
     - id: fetch-terraform-vpc
       name: Fetch Terraform VPC
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources and parameters.iac_resources.includes('vpc') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/terraform/vpc
         targetPath: ./iac/terraform/vpc
         values:
           client_name: ${{ parameters.client_name }}
-          vpc_cidr: ${{ parameters.vpc_cidr }}
+          vpc_cidr: ${{ parameters.iac_resources.config.vpc_cidr }}
 
     - id: fetch-terraform-ec2
       name: Fetch Terraform EC2
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources and parameters.iac_resources.includes('ec2') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/terraform/ec2
         targetPath: ./iac/terraform/ec2
         values:
           client_name: ${{ parameters.client_name }}
-          ec2_instance_type: ${{ parameters.ec2_instance_type }}
+          ec2_instance_type: ${{ parameters.iac_resources.config.ec2_instance_type }}
 
     - id: fetch-terraform-s3
       name: Fetch Terraform S3
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources and parameters.iac_resources.includes('s3') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/terraform/s3
         targetPath: ./iac/terraform/s3
         values:
           client_name: ${{ parameters.client_name }}
-          s3_versioning: ${{ parameters.s3_versioning }}
+          s3_versioning: ${{ parameters.iac_resources.config.s3_versioning }}
 
     - id: fetch-terraform-rds
       name: Fetch Terraform RDS
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources and parameters.iac_resources.includes('rds') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/terraform/rds
         targetPath: ./iac/terraform/rds
         values:
           client_name: ${{ parameters.client_name }}
-          rds_engine: ${{ parameters.rds_engine }}
+          rds_engine: ${{ parameters.iac_resources.config.rds_engine }}
 
     # ── CLOUDFORMATION ─────────────────────
     - id: fetch-cfn-base
@@ -610,50 +350,49 @@ spec:
 
     - id: fetch-cfn-vpc
       name: Fetch CloudFormation VPC
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources and parameters.iac_resources.includes('vpc') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/vpc
         targetPath: ./iac/cloudformation/vpc
         values:
           client_name: ${{ parameters.client_name }}
-          vpc_cidr: ${{ parameters.vpc_cidr }}
+          vpc_cidr: ${{ parameters.iac_resources.config.vpc_cidr }}
 
     - id: fetch-cfn-ec2
       name: Fetch CloudFormation EC2
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources and parameters.iac_resources.includes('ec2') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/ec2
         targetPath: ./iac/cloudformation/ec2
         values:
           client_name: ${{ parameters.client_name }}
-          ec2_instance_type: ${{ parameters.ec2_instance_type }}
+          ec2_instance_type: ${{ parameters.iac_resources.config.ec2_instance_type }}
 
     - id: fetch-cfn-s3
       name: Fetch CloudFormation S3
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources and parameters.iac_resources.includes('s3') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/s3
         targetPath: ./iac/cloudformation/s3
         values:
           client_name: ${{ parameters.client_name }}
-          s3_versioning: ${{ parameters.s3_versioning }}
+          s3_versioning: ${{ parameters.iac_resources.config.s3_versioning }}
 
     - id: fetch-cfn-rds
       name: Fetch CloudFormation RDS
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources and parameters.iac_resources.includes('rds') }}
+      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/rds
         targetPath: ./iac/cloudformation/rds
         values:
           client_name: ${{ parameters.client_name }}
-          rds_engine: ${{ parameters.rds_engine }}
+          rds_engine: ${{ parameters.iac_resources.config.rds_engine }}
 
     # ── ANSIBLE ────────────────────────────
-    # Ansible is now its own top-level entity — targetPath is ./ansible not ./iac/ansible
     - id: fetch-ansible
       name: Fetch Ansible Playbook
       if: ${{ parameters.selected_modules === 'ansible' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'ansible_cicd' or parameters.selected_modules === 'all' }}
@@ -664,14 +403,14 @@ spec:
         values:
           client_name: ${{ parameters.client_name }}
           aws_region: ${{ parameters.aws_region }}
-          provision_vpc: ${{ parameters.iac_resources and parameters.iac_resources.includes('vpc') }}
-          provision_ec2: ${{ parameters.iac_resources and parameters.iac_resources.includes('ec2') }}
-          provision_s3: ${{ parameters.iac_resources and parameters.iac_resources.includes('s3') }}
-          provision_rds: ${{ parameters.iac_resources and parameters.iac_resources.includes('rds') }}
-          vpc_cidr: ${{ parameters.vpc_cidr }}
-          ec2_instance_type: ${{ parameters.ec2_instance_type }}
-          s3_versioning: ${{ parameters.s3_versioning }}
-          rds_engine: ${{ parameters.rds_engine }}
+          provision_vpc: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
+          provision_ec2: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
+          provision_s3: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
+          provision_rds: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
+          vpc_cidr: ${{ parameters.iac_resources.config.vpc_cidr }}
+          ec2_instance_type: ${{ parameters.iac_resources.config.ec2_instance_type }}
+          s3_versioning: ${{ parameters.iac_resources.config.s3_versioning }}
+          rds_engine: ${{ parameters.iac_resources.config.rds_engine }}
 
     # ── CI/CD ──────────────────────────────
     - id: fetch-github-actions
@@ -701,7 +440,7 @@ spec:
       action: publish:github:pull-request
       input:
         repoUrl: ${{ parameters.repoUrl }}
-        branchName: infra/${{ parameters.client_name }}-${{ parameters.selected_modules }}-${{ parameters.iac_resources or parameters.cicd_tool or "setup" }}
+        branchName: infra/${{ parameters.client_name }}-${{ parameters.selected_modules }}-${{ parameters.iac_resources.resources or parameters.cicd_tool or "setup" }}
         targetBranchName: main
         update: true
         title: "chore: setup infrastructure templates for ${{ parameters.client_name }}"
