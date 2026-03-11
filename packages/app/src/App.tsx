@@ -1,4 +1,6 @@
 import { Navigate, Route } from 'react-router-dom';
+import { AwsResourcePickerFieldExtension } from './components/AwsResourcePicker';
+import { Root } from './components/Root';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
   CatalogEntityPage,
@@ -9,7 +11,8 @@ import {
   CatalogImportPage,
   catalogImportPlugin,
 } from '@backstage/plugin-catalog-import';
-import { ScaffolderPage, scaffolderPlugin } from '@backstage/plugin-scaffolder';
+// Added ScaffolderFieldExtensions to the import below
+import { ScaffolderPage, scaffolderPlugin, ScaffolderFieldExtensions } from '@backstage/plugin-scaffolder';
 import { orgPlugin } from '@backstage/plugin-org';
 import { SearchPage } from '@backstage/plugin-search';
 import {
@@ -81,7 +84,14 @@ const routes = (
         <ReportIssue />
       </TechDocsAddons>
     </Route>
-    <Route path="/create" element={<ScaffolderPage />} />
+    
+    {/* Updated Scaffolder Route */}
+    <Route path="/create" element={<ScaffolderPage />}>
+      <ScaffolderFieldExtensions>
+        <AwsResourcePickerFieldExtension />
+      </ScaffolderFieldExtensions>
+    </Route>
+
     <Route path="/api-docs" element={<ApiExplorerPage />} />
     <Route
       path="/catalog-import"
