@@ -93,6 +93,8 @@ catalog:
       target: ../../templates/node.js-service-templates/template.yaml
     - type: file
       target: ../../templates/aws-infra-template/template.yaml
+    - type: file
+      target: ../../templates/Fetch-from-company's-repo/template.yaml
         
 
 

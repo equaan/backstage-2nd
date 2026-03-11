@@ -1,4 +1,3 @@
-#Note: doing myself from here
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
@@ -55,9 +54,8 @@ spec:
         github_owner:
           title: GitHub Organization
           type: string
-          
-        
   
+
   steps:
     - id: fetch-base
       name: Fetch Terraform Skeleton
@@ -68,14 +66,18 @@ spec:
           client_name: ${{ parameters.client_name }}
           aws_region: ${{ parameters.aws_region }}
           environment: ${{ parameters.environment }}
+          project_name: ${{ parameters.project_name }}
     
+      
+    
+      #publish the generated code to GitHub
     - id: publish
       name: Publish to GitHub
       action: publish:github
       input:
         repoUrl: github.com?owner=${{ parameters.github_owner }}&repo=${{ parameters.project_name }}-infra-${{ parameters.environment }}
         defaultBranch: main
-        description: Infrastructure repo for ${{ parameters.client_name }}
+        description: Infrastructure repo for ${{ parameters.client_name }} - ${{ parameters.project_name }} - ${{ parameters.environment }}
 
   output:
     text:
