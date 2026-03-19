@@ -245,6 +245,67 @@ const EksConfig = ({ config, onChange, classes }: any) => (
 6. Build the EKS module in `opt-it-modules`
 7. Add fetch step + skeleton block in `opt-it-catalog`
 
+
+#### `AzureResourcePicker`
+
+**Location:** `packages/app/src/components/AzureResourcePicker/`
+
+**What it does:** Renders an Azure foundation section (location selector, subscription ID confirmation) followed by a list of Azure services with checkboxes. When a service is checked, its configuration fields expand inline. Automatically selects dependencies (e.g. checking VM auto-checks VNet and NSG).
+
+**What it returns:**
+```json
+{
+  "foundation": {
+    "location": "eastus",
+    "resource_group_suffix": "",
+    "subscription_id_confirmed": true
+  },
+  "resources": "vnet_nsg_vm_blob",
+  "config": {
+    "vnet_address_space": "10.0.0.0/16",
+    "public_subnet_prefixes": "10.0.1.0/24,10.0.2.0/24",
+    "private_subnet_prefixes": "10.0.10.0/24,10.0.11.0/24",
+    "enable_nat_gateway": false,
+    "allowed_ssh_source_prefixes": "",
+    "db_port": 5432,
+    "vm_size": "Standard_B2s",
+    "admin_username": "azureuser",
+    "storage_suffix": "store",
+    "account_replication_type": "LRS",
+    "container_names": "default",
+    "db_engine": "postgres",
+    "db_version": "15",
+    "sku_name": "B_Standard_B1ms",
+    "high_availability_mode": "Disabled"
+  }
+}
+```
+
+**How to use in template.yaml:**
+```yaml
+azure_resources:
+  title: Azure Resources
+  type: object
+  ui:field: AzureResourcePicker
+  ui:options:
+    environment: ${{ parameters.environment }}
+```
+
+**How to access values in template steps:**
+```yaml
+parameters.azure_resources.foundation.location
+parameters.azure_resources.foundation.resource_group_suffix
+parameters.azure_resources.resources                          # "vnet_nsg_vm"
+parameters.azure_resources.resources.includes('vnet')         # true/false
+parameters.azure_resources.config.vm_size
+parameters.azure_resources.config.db_engine
+```
+
+**Validation enforced:**
+- Azure location must be selected
+- Engineer must confirm `ARM_SUBSCRIPTION_ID` is set
+- At least one resource must be selected
+- SSH from `*` or `0.0.0.0/0` is blocked at the module level
 ---
 
 ## Adding a New Custom Field Extension
@@ -445,7 +506,8 @@ Always run `pwd` before running any setup script. The working directory must mat
 | Phase | Status | New Extensions |
 |---|---|---|
 | Phase 1 | ✅ Complete | `AwsResourcePicker` |
-| Phase 2 | 🔜 Planned | `AzureResourcePicker`, `GcpResourcePicker` |
+| Phase 2 | ✅ Complete | `AzureResourcePicker` |
+| Phase 2b | 🔜 Planned | `GcpResourcePicker` |
 | Phase 3 | 🔜 Planned | `ObservabilityPicker`, `CICDPicker` |
 | Phase 4 | 🔜 Planned | `SecurityPicker`, `ContainerPicker` |
 | Phase 5 | 🔜 Planned | Full onboarding wizard |
