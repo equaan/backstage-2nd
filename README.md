@@ -306,6 +306,38 @@ parameters.azure_resources.config.db_engine
 - Engineer must confirm `ARM_SUBSCRIPTION_ID` is set
 - At least one resource must be selected
 - SSH from `*` or `0.0.0.0/0` is blocked at the module level
+
+#### `GcpResourcePicker`
+
+**Location:** `packages/app/src/components/GcpResourcePicker/`
+
+**What it does:** Renders a GCP foundation section (project ID, region, zone selector, ADC confirmation) followed by GCP service checkboxes. Auto-selects dependencies.
+
+**Key difference from AWS/Azure pickers:** Region selector auto-updates the zone dropdown. Project ID is typed directly (GCP projects are pre-existing). Auth confirmation asks engineer to confirm `gcloud auth application-default login` was run.
+
+**What it returns:**
+```json
+{
+  "foundation": {
+    "project_id": "acme-corp-prod-123456",
+    "region": "us-central1",
+    "zone": "us-central1-a",
+    "adc_confirmed": true
+  },
+  "resources": "vpc_firewall_gce",
+  "config": { ... }
+}
+```
+
+**How to use in template.yaml:**
+```yaml
+gcp_resources:
+  title: GCP Resources
+  type: object
+  ui:field: GcpResourcePicker
+  ui:options:
+    environment: ${{ parameters.environment }}
+```
 ---
 
 ## Adding a New Custom Field Extension
@@ -507,7 +539,7 @@ Always run `pwd` before running any setup script. The working directory must mat
 |---|---|---|
 | Phase 1 | ✅ Complete | `AwsResourcePicker` |
 | Phase 2 | ✅ Complete | `AzureResourcePicker` |
-| Phase 2b | 🔜 Planned | `GcpResourcePicker` |
+| Phase 2b | ✅ Complete | `GcpResourcePicker` |
 | Phase 3 | 🔜 Planned | `ObservabilityPicker`, `CICDPicker` |
 | Phase 4 | 🔜 Planned | `SecurityPicker`, `ContainerPicker` |
 | Phase 5 | 🔜 Planned | Full onboarding wizard |
