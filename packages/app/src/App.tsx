@@ -1,5 +1,6 @@
 import { Navigate, Route } from 'react-router-dom';
 import { AwsResourcePickerFieldExtension } from './components/AwsResourcePicker';
+import { AzureResourcePickerFieldExtension } from './components/AzureResourcePicker';
 import { Root } from './components/Root';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
@@ -11,8 +12,11 @@ import {
   CatalogImportPage,
   catalogImportPlugin,
 } from '@backstage/plugin-catalog-import';
-// Added ScaffolderFieldExtensions to the import below
-import { ScaffolderPage, scaffolderPlugin, ScaffolderFieldExtensions } from '@backstage/plugin-scaffolder';
+import { 
+  ScaffolderPage, 
+  scaffolderPlugin, 
+  ScaffolderFieldExtensions 
+} from '@backstage/plugin-scaffolder';
 import { orgPlugin } from '@backstage/plugin-org';
 import { SearchPage } from '@backstage/plugin-search';
 import {
@@ -26,7 +30,6 @@ import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { entityPage } from './components/catalog/EntityPage';
 import { searchPage } from './components/search/SearchPage';
-import { Root } from './components/Root';
 
 import {
   AlertDisplay,
@@ -85,10 +88,10 @@ const routes = (
       </TechDocsAddons>
     </Route>
     
-    {/* Updated Scaffolder Route */}
     <Route path="/create" element={<ScaffolderPage />}>
       <ScaffolderFieldExtensions>
         <AwsResourcePickerFieldExtension />
+        <AzureResourcePickerFieldExtension />
       </ScaffolderFieldExtensions>
     </Route>
 
