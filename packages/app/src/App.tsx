@@ -1,6 +1,7 @@
 import { Navigate, Route } from 'react-router-dom';
 import { AwsResourcePickerFieldExtension } from './components/AwsResourcePicker';
 import { AzureResourcePickerFieldExtension } from './components/AzureResourcePicker';
+import { GcpResourcePickerFieldExtension } from './components/GcpResourcePicker';
 import { Root } from './components/Root';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
@@ -92,6 +93,7 @@ const routes = (
       <ScaffolderFieldExtensions>
         <AwsResourcePickerFieldExtension />
         <AzureResourcePickerFieldExtension />
+        <GcpResourcePickerFieldExtension />
       </ScaffolderFieldExtensions>
     </Route>
 
