@@ -2,6 +2,8 @@ import { Navigate, Route } from 'react-router-dom';
 import { AwsResourcePickerFieldExtension } from './components/AwsResourcePicker';
 import { AzureResourcePickerFieldExtension } from './components/AzureResourcePicker';
 import { GcpResourcePickerFieldExtension } from './components/GcpResourcePicker';
+import { CICDPickerFieldExtension } from './components/CICDPicker';
+import { ObservabilityPickerFieldExtension } from './components/ObservabilityPicker';
 import { Root } from './components/Root';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
@@ -94,6 +96,8 @@ const routes = (
         <AwsResourcePickerFieldExtension />
         <AzureResourcePickerFieldExtension />
         <GcpResourcePickerFieldExtension />
+        <CICDPickerFieldExtension />
+        <ObservabilityPickerFieldExtension />
       </ScaffolderFieldExtensions>
     </Route>
 
