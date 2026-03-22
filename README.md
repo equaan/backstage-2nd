@@ -15,6 +15,7 @@ This is the Backstage application that runs Opt IT's internal developer platform
 - [Adding a New Custom Field Extension](#adding-a-new-custom-field-extension)
 - [Connecting a New Template Catalog](#connecting-a-new-template-catalog)
 - [app-config.yaml Reference](#app-configyaml-reference)
+- [Debugging Field Extensions](#debugging-field-extensions)
 - [Debugging](#debugging)
 - [Common Mistakes To Avoid](#common-mistakes-to-avoid)
 
@@ -27,7 +28,7 @@ This is the Backstage application that runs Opt IT's internal developer platform
 - Node.js 18 or higher
 - yarn
 - Git
-- A GitHub personal access token with `repo` scope (for PR creation)
+- A GitHub personal access token with `repo`, `workflow`, `read:org`, `read:user` scopes
 
 ### Setup
 
@@ -63,6 +64,11 @@ export GITHUB_TOKEN=your_token_here
 yarn dev
 ```
 
+**After `yarn clean`** — templates take 60-90 seconds to reload from GitHub. If they don't appear, go to `http://localhost:3000/catalog-import` and re-register:
+```
+https://github.com/equaan/opt-it-catalog/blob/main/catalog-info.yaml
+```
+
 ---
 
 ## Repository Structure
@@ -79,8 +85,26 @@ backstage-2nd/
 │   │       ├── App.tsx                ← app entry point + field extension registration
 │   │       └── components/
 │   │           ├── AwsResourcePicker/ ← custom field extension for AWS resource selection
-│   │           │   ├── AwsResourcePicker.tsx   ← the React component
-│   │           │   └── index.ts                ← registration + validation
+│   │           │   ├── AwsResourcePicker.tsx
+│   │           │   └── index.ts
+│   │           ├── AzureResourcePicker/
+│   │           │   ├── AzureResourcePicker.tsx
+│   │           │   └── index.ts
+│   │           ├── GcpResourcePicker/
+│   │           │   ├── GcpResourcePicker.tsx
+│   │           │   └── index.ts
+│   │           ├── CICDPicker/
+│   │           │   ├── CICDPicker.tsx
+│   │           │   └── index.ts
+│   │           ├── ObservabilityPicker/
+│   │           │   ├── ObservabilityPicker.tsx
+│   │           │   └── index.ts
+│   │           ├── SecurityPicker/
+│   │           │   ├── SecurityPicker.tsx
+│   │           │   └── index.ts
+│   │           ├── ContainerPicker/
+│   │           │   ├── ContainerPicker.tsx
+│   │           │   └── index.ts
 │   │           ├── Root/              ← Backstage root layout
 │   │           ├── catalog/           ← catalog entity pages
 │   │           └── search/            ← search page
@@ -124,16 +148,16 @@ Opt IT's platform is split across three repositories. Understanding how they con
 │  Templates reference modules from → opt-it-modules          │
 └─────────────────────────────────────────────────────────────┘
                               │
-                 fetch:plain / fetch:template steps
+                 fetch:template steps (never fetch:plain)
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                        opt-it-modules                       │
 │                                                             │
-│  All versioned IaC modules (Terraform, CFN, Ansible).       │
-│  Modules are pinned via git tags.                           │
-│  Templates fetch specific tagged versions of modules        │
-│  and copy them into the client's repository.                │
+│  All versioned IaC modules (Terraform, CI/CD, Obs,          │
+│  Security, Containers). Modules pinned via git tags.        │
+│  Templates fetch specific tagged versions and copy          │
+│  them into the client's repository PR.                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -146,9 +170,11 @@ Opt IT's platform is split across three repositories. Understanding how they con
 | Template registration | `backstage-2nd/app-config.yaml` catalog.locations |
 | Template YAML files | `opt-it-catalog/templates/` |
 | Skeleton files (generated code) | `opt-it-catalog/templates/{name}/skeleton/` |
-| Terraform modules | `opt-it-modules/terraform/aws/` |
-| CloudFormation templates | `opt-it-modules/cloudformation/aws/` |
+| Terraform modules | `opt-it-modules/terraform/aws/`, `azure/`, `GCP/` |
 | CI/CD templates | `opt-it-modules/cicd/` |
+| Observability configs | `opt-it-modules/observability/` |
+| Security configs | `opt-it-modules/security/` |
+| Container configs | `opt-it-modules/containers/` |
 
 ---
 
@@ -245,6 +271,7 @@ const EksConfig = ({ config, onChange, classes }: any) => (
 6. Build the EKS module in `opt-it-modules`
 7. Add fetch step + skeleton block in `opt-it-catalog`
 
+---
 
 #### `AzureResourcePicker`
 
@@ -307,6 +334,8 @@ parameters.azure_resources.config.db_engine
 - At least one resource must be selected
 - SSH from `*` or `0.0.0.0/0` is blocked at the module level
 
+---
+
 #### `GcpResourcePicker`
 
 **Location:** `packages/app/src/components/GcpResourcePicker/`
@@ -325,26 +354,17 @@ parameters.azure_resources.config.db_engine
     "adc_confirmed": true
   },
   "resources": "vpc_firewall_gce",
-  "config": { ... }
+  "config": {
+    "public_subnet_cidr": "10.0.1.0/24",
+    "private_subnet_cidr": "10.0.10.0/24",
+    "enable_cloud_nat": true,
+    "machine_type": "e2-medium",
+    "db_engine": "postgres",
+    "db_version": "POSTGRES_15",
+    "tier": "db-f1-micro",
+    "availability_type": "ZONAL"
+  }
 }
-
-#### `CICDPicker`
-Selects CI/CD tools (GitHub Actions, Jenkins, GitLab CI, ArgoCD).
-Returns: `{ tools: "GitHub Actions,Jenkins", config: { argocd_cluster_url, ... } }`
-
-#### `ObservabilityPicker`
-Configures Prometheus + Grafana stack.
-Returns: `{ config: { deployment_method, scrape_interval, retention_days, grafana_port, ... } }`
-
-#### `SecurityPicker`
-Configures Trivy and OWASP scanners.
-Returns: `{ config: { enable_trivy, trivy_exit_code, scan_docker_image, scan_iac, enable_owasp, owasp_fail_cvss } }`
-
-#### `ContainerPicker`
-Configures language, Docker Compose, Kubernetes, and Helm.
-Returns: `{ config: { language, runtime_version, app_port, include_kubernetes, min_replicas, max_replicas, ... } }`
-
-
 ```
 
 **How to use in template.yaml:**
@@ -356,49 +376,215 @@ gcp_resources:
   ui:options:
     environment: ${{ parameters.environment }}
 ```
+
+---
+
+#### `CICDPicker`
+
+**Location:** `packages/app/src/components/CICDPicker/`
+
+**What it does:** Checkbox list of CI/CD tools. Each tool expands inline when selected to show its specific configuration — stages for GitHub Actions/Jenkins/GitLab CI, and cluster URL/namespace/manifests path for ArgoCD.
+
+**Tools:** GitHub Actions, Jenkins, GitLab CI, ArgoCD. Multiple tools can be selected simultaneously.
+
+**What it returns:**
+```json
+{
+  "tools": "GitHub Actions,Jenkins",
+  "config": {
+    "gh_stages": ["build", "test", "deploy"],
+    "jenkins_agent": "docker",
+    "jenkins_stages": ["build", "test", "deploy"],
+    "gitlab_stages": ["build", "test", "deploy"],
+    "argocd_cluster_url": "https://kubernetes.default.svc",
+    "argocd_app_namespace": "default",
+    "argocd_manifests_path": "k8s/",
+    "argocd_target_revision": "HEAD",
+    "argocd_prune": true,
+    "argocd_self_heal": true
+  }
+}
+```
+
+**How to use in template.yaml:**
+```yaml
+cicd_config:
+  title: CI/CD Configuration
+  type: object
+  ui:field: CICDPicker
+```
+
+**Important:** The `tools` string uses display names (`"GitHub Actions"`) not IDs. Template `if` conditions must match exactly: `parameters.cicd_config.tools.includes('GitHub Actions')`.
+
+---
+
+#### `ObservabilityPicker`
+
+**Location:** `packages/app/src/components/ObservabilityPicker/`
+
+**What it does:** Configures the full observability stack — deployment method (Docker Compose or Helm), Prometheus scrape interval and retention, Grafana port and admin password, alert rules, and notification channels (Slack webhook and/or email).
+
+**What it returns:**
+```json
+{
+  "config": {
+    "deployment_method": "docker-compose",
+    "scrape_interval": "15s",
+    "retention_days": 30,
+    "grafana_port": 3000,
+    "grafana_admin_password": "...",
+    "alert_email": "alerts@company.com",
+    "slack_webhook": "https://hooks.slack.com/...",
+    "slack_channel": "devops-alerts",
+    "scrape_app_metrics": false,
+    "app_metrics_port": 8080,
+    "include_infra_alerts": true,
+    "include_app_alerts": true
+  }
+}
+```
+
+**How to use in template.yaml:**
+```yaml
+obs_config:
+  title: Observability Configuration
+  type: object
+  ui:field: ObservabilityPicker
+  ui:options:
+    environment: ${{ parameters.environment }}
+```
+
+**Validation enforced:** Grafana admin password is required and must be at least 8 characters.
+
+---
+
+#### `SecurityPicker`
+
+**Location:** `packages/app/src/components/SecurityPicker/`
+
+**What it does:** Toggle Trivy and OWASP scanners on/off. When enabled, each scanner shows its configuration inline — severity levels, exit codes, scan targets for Trivy; CVSS fail threshold for OWASP.
+
+**What it returns:**
+```json
+{
+  "config": {
+    "enable_trivy": true,
+    "trivy_exit_code": 1,
+    "ignore_unfixed": true,
+    "include_medium_severity": false,
+    "scan_docker_image": false,
+    "scan_iac": true,
+    "enable_owasp": false,
+    "owasp_fail_cvss": 7
+  }
+}
+```
+
+**How to use in template.yaml:**
+```yaml
+security_config:
+  title: Security Configuration
+  type: object
+  ui:field: SecurityPicker
+  ui:options:
+    environment: ${{ parameters.environment }}
+```
+
+**Validation enforced:** At least one scanner (Trivy or OWASP) must be enabled.
+
+---
+
+#### `ContainerPicker`
+
+**Location:** `packages/app/src/components/ContainerPicker/`
+
+**What it does:** Select language (Node.js, Python, Java, Go) and runtime version. Toggle Docker Compose (with optional DB and Redis), Kubernetes manifests, and Helm chart. Configure resource limits, replica counts, domain, and container registry.
+
+**What it returns:**
+```json
+{
+  "config": {
+    "language": "nodejs",
+    "runtime_version": "20",
+    "app_port": 3000,
+    "health_check_path": "/health",
+    "include_docker_compose": true,
+    "include_database": false,
+    "db_engine": "postgres",
+    "db_name": "appdb",
+    "db_user": "appuser",
+    "include_redis": false,
+    "include_kubernetes": true,
+    "k8s_namespace": "default",
+    "container_registry": "ghcr.io/equaan",
+    "domain": "app.example.com",
+    "initial_replicas": 2,
+    "min_replicas": 2,
+    "max_replicas": 10,
+    "cpu_request": "100m",
+    "memory_request": "128Mi",
+    "cpu_limit": "500m",
+    "memory_limit": "512Mi",
+    "cpu_target_utilization": 70,
+    "include_helm": true
+  }
+}
+```
+
+**How to use in template.yaml:**
+```yaml
+container_config:
+  title: Container Configuration
+  type: object
+  ui:field: ContainerPicker
+  ui:options:
+    environment: ${{ parameters.environment }}
+```
+
+**Validation enforced:** Language, app port, and health check path are required.
+
 ---
 
 ## Adding a New Custom Field Extension
 
-If you need a completely new custom field extension (e.g. `AzureResourcePicker`):
+If you need a completely new custom field extension:
 
 ### Step 1 — Create the component
 
 ```bash
-mkdir -p packages/app/src/components/AzureResourcePicker
+mkdir -p packages/app/src/components/MyNewPicker
 ```
 
-Create `AzureResourcePicker.tsx` following the same pattern as `AwsResourcePicker.tsx`:
+Create `MyNewPicker.tsx` following the same pattern as `AwsResourcePicker.tsx`:
 - Define the value interface
-- Define `SERVICE_DEFINITIONS`
-- Write config components per service
 - Write the main component using `FieldExtensionComponentProps`
+- Use `makeStyles` from `@material-ui/core/styles` for styling
 
 ### Step 2 — Create `index.ts`
 
 ```typescript
 import { scaffolderPlugin } from '@backstage/plugin-scaffolder';
 import { createScaffolderFieldExtension } from '@backstage/plugin-scaffolder-react';
-import { AzureResourcePicker } from './AzureResourcePicker';
+import { MyNewPicker } from './MyNewPicker';
 
-export const azureResourcePickerValidation = async (
-  value: { resources: string; config: object },
+export const myNewPickerValidation = async (
+  value: { /* your value type */ },
   validation: { addError: (msg: string) => void },
 ) => {
-  if (!value?.resources || value.resources.trim() === '') {
-    validation.addError('Please select at least one Azure resource.');
+  if (!value) {
+    validation.addError('Please fill in the required fields.');
   }
 };
 
-export const AzureResourcePickerFieldExtension = scaffolderPlugin.provide(
+export const MyNewPickerFieldExtension = scaffolderPlugin.provide(
   createScaffolderFieldExtension({
-    name: 'AzureResourcePicker',
-    component: AzureResourcePicker,
-    validation: azureResourcePickerValidation,
+    name: 'MyNewPicker',
+    component: MyNewPicker,
+    validation: myNewPickerValidation,
   }),
 );
 
-export { AzureResourcePicker };
+export { MyNewPicker };
 ```
 
 ### Step 3 — Register in `App.tsx`
@@ -407,24 +593,37 @@ Open `packages/app/src/App.tsx` and add:
 
 ```typescript
 // Add import at the top
-import { AzureResourcePickerFieldExtension } from './components/AzureResourcePicker';
+import { MyNewPickerFieldExtension } from './components/MyNewPicker';
 
 // Add inside <ScaffolderFieldExtensions>
 <Route path="/create" element={<ScaffolderPage />}>
   <ScaffolderFieldExtensions>
     <AwsResourcePickerFieldExtension />
-    <AzureResourcePickerFieldExtension />    {/* ← add this */}
+    <AzureResourcePickerFieldExtension />
+    <GcpResourcePickerFieldExtension />
+    <CICDPickerFieldExtension />
+    <ObservabilityPickerFieldExtension />
+    <SecurityPickerFieldExtension />
+    <ContainerPickerFieldExtension />
+    <MyNewPickerFieldExtension />    {/* ← add this */}
   </ScaffolderFieldExtensions>
 </Route>
 ```
 
-### Step 4 — Restart Backstage
+### Step 4 — Check TypeScript before restarting
+
+```bash
+yarn tsc --noEmit 2>&1 | grep -A3 "MyNewPicker"
+# Should return nothing — if it does, fix those errors first
+```
+
+### Step 5 — Restart Backstage
 
 ```bash
 yarn dev
 ```
 
-The new field extension will be available in templates as `ui:field: AzureResourcePicker`.
+The new field extension will be available in templates as `ui:field: MyNewPicker`.
 
 ---
 
@@ -484,6 +683,46 @@ scaffolder:
 
 ---
 
+## Debugging Field Extensions
+
+If page 2 of a template renders completely blank (title shows but no content):
+
+**Step 1 — Check TypeScript errors:**
+```bash
+yarn tsc --noEmit 2>&1 | grep -A3 "PickerName"
+```
+
+**Step 2 — Common causes and fixes:**
+
+| Error | Cause | Fix |
+|---|---|---|
+| `TS6133: React declared but never read` | React imported but not used. Causes **silent** compile failure — component renders nothing | Remove React import: `import { useState } from 'react'` OR add `// eslint-disable-next-line @typescript-eslint/no-unused-vars` before the import line |
+| `TS2306: File is not a module` | The component `.tsx` file failed to compile so `index.ts` cannot import it | Fix the underlying TS error in the component file first — the module error will disappear |
+| Page 2 blank with no TS errors | Stale webpack cache | Run `yarn clean` then `yarn dev` |
+
+**Step 3 — Verify fix:**
+```bash
+yarn tsc --noEmit 2>&1 | grep -A3 "PickerName"
+# Should return nothing
+```
+
+**Step 4 — If still blank after fixing TS errors:**
+```bash
+yarn clean
+yarn dev
+```
+
+**The error chain that caused this issue in this project:**
+```
+TS6133 (unused React import)
+  → component .tsx fails to compile
+  → index.ts cannot import it → TS2306 (not a module)
+  → App.tsx import fails silently
+  → component renders blank with no runtime error thrown
+```
+
+---
+
 ## Debugging
 
 ### Template not showing in Backstage
@@ -492,13 +731,7 @@ scaffolder:
 2. Check `app-config.yaml` — is the catalog URL correct?
 3. Restart Backstage — the catalog refreshes every 30 minutes but restart is instant
 4. Check the Backstage backend logs for catalog ingestion errors
-
-### Custom field extension not working
-
-1. Check `App.tsx` — is the extension registered inside `<ScaffolderFieldExtensions>`?
-2. Check `index.ts` — is the extension exported correctly?
-3. Check the browser console — TypeScript errors won't always surface in terminal
-4. Make sure `ui:field: AwsResourcePicker` matches the name in `createScaffolderFieldExtension`
+5. Go to the catalog entity → three dots → **Refresh** to force an immediate re-fetch
 
 ### Steps failing in template run
 
@@ -511,6 +744,8 @@ Go to Backstage → Create → find your run → click **View logs**.
 | `filter not found: now` | Remove `${{ "" | now }}` from skeleton files |
 | `[object Object]` in branch name | Use `.resources` not the whole object |
 | `Git Repository is empty` | Client repo needs at least one commit |
+| Files missing from PR | Change `fetch:plain` to `fetch:template` with `values: {}` |
+| Branch name invalid ref | Branch contains spaces/commas — use static suffix like `setup` |
 
 ### Rebuilding after code changes
 
@@ -529,14 +764,14 @@ Backstage hot-reloads most frontend changes automatically. Backend changes requi
 Never commit GitHub tokens or any credentials. Use `app-config.local.yaml` for local development and environment variables in production.
 
 **Importing `Root` from the wrong path**
-`Root` must be imported from `./components/Root` not from `./components/AwsResourcePicker`. This causes a silent build failure.
+`Root` must be imported from `./components/Root` not from any picker component. This causes a silent build failure.
 
 ```typescript
 // ✅ Correct
 import { Root } from './components/Root';
 import { AwsResourcePickerFieldExtension } from './components/AwsResourcePicker';
 
-// ❌ Wrong — Root is not exported from AwsResourcePicker
+// ❌ Wrong
 import { Root } from './components/AwsResourcePicker';
 ```
 
@@ -549,6 +784,9 @@ Config changes are not hot-reloaded — always restart after changing `app-confi
 **Running bash scripts from the wrong directory**
 Always run `pwd` before running any setup script. The working directory must match the repo the script is targeting.
 
+**Using `fetch:plain` in template steps**
+`fetch:plain` runs successfully but files do not appear in the client PR. Always use `fetch:template` with `values: {}` even when you don't need template substitution.
+
 ---
 
 ## Phase Roadmap
@@ -560,4 +798,32 @@ Always run `pwd` before running any setup script. The working directory must mat
 | Phase 2b | ✅ Complete | `GcpResourcePicker` |
 | Phase 3 | ✅ Complete | `CICDPicker`, `ObservabilityPicker` |
 | Phase 4 | ✅ Complete | `SecurityPicker`, `ContainerPicker` |
-| Phase 5 | 🔜 Planned | Full onboarding wizard |
+| Phase 5 | ✅ Complete | Full Onboarding Wizard — reuses all existing pickers, no new extension needed |
+
+---
+
+## Platform Summary
+
+**3 repositories:**
+- `equaan/opt-it-modules` — 18 versioned Terraform modules across AWS, Azure, GCP + CI/CD, Observability, Security, Container modules
+- `equaan/opt-it-catalog` — 8 Backstage templates
+- `equaan/backstage-2nd` — Backstage app with 7 custom field extensions
+
+**8 templates:**
+- ⭐ Full Client Onboarding (Phase 5)
+- AWS Infrastructure (Phase 1)
+- Azure Infrastructure (Phase 2)
+- GCP Infrastructure (Phase 2b)
+- CI/CD Pipeline (Phase 3)
+- Observability Stack (Phase 3)
+- Security Scan (Phase 4)
+- Container Setup (Phase 4)
+
+**7 field extensions:**
+- AwsResourcePicker
+- AzureResourcePicker
+- GcpResourcePicker
+- CICDPicker
+- ObservabilityPicker
+- SecurityPicker
+- ContainerPicker
