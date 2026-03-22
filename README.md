@@ -335,6 +335,16 @@ Returns: `{ tools: "GitHub Actions,Jenkins", config: { argocd_cluster_url, ... }
 #### `ObservabilityPicker`
 Configures Prometheus + Grafana stack.
 Returns: `{ config: { deployment_method, scrape_interval, retention_days, grafana_port, ... } }`
+
+#### `SecurityPicker`
+Configures Trivy and OWASP scanners.
+Returns: `{ config: { enable_trivy, trivy_exit_code, scan_docker_image, scan_iac, enable_owasp, owasp_fail_cvss } }`
+
+#### `ContainerPicker`
+Configures language, Docker Compose, Kubernetes, and Helm.
+Returns: `{ config: { language, runtime_version, app_port, include_kubernetes, min_replicas, max_replicas, ... } }`
+
+
 ```
 
 **How to use in template.yaml:**
@@ -549,5 +559,5 @@ Always run `pwd` before running any setup script. The working directory must mat
 | Phase 2 | ✅ Complete | `AzureResourcePicker` |
 | Phase 2b | ✅ Complete | `GcpResourcePicker` |
 | Phase 3 | ✅ Complete | `CICDPicker`, `ObservabilityPicker` |
-| Phase 4 | 🔜 Planned | `SecurityPicker`, `ContainerPicker` |
+| Phase 4 | ✅ Complete | `SecurityPicker`, `ContainerPicker` |
 | Phase 5 | 🔜 Planned | Full onboarding wizard |
