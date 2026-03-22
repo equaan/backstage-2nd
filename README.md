@@ -327,6 +327,14 @@ parameters.azure_resources.config.db_engine
   "resources": "vpc_firewall_gce",
   "config": { ... }
 }
+
+#### `CICDPicker`
+Selects CI/CD tools (GitHub Actions, Jenkins, GitLab CI, ArgoCD).
+Returns: `{ tools: "GitHub Actions,Jenkins", config: { argocd_cluster_url, ... } }`
+
+#### `ObservabilityPicker`
+Configures Prometheus + Grafana stack.
+Returns: `{ config: { deployment_method, scrape_interval, retention_days, grafana_port, ... } }`
 ```
 
 **How to use in template.yaml:**
@@ -540,6 +548,6 @@ Always run `pwd` before running any setup script. The working directory must mat
 | Phase 1 | ✅ Complete | `AwsResourcePicker` |
 | Phase 2 | ✅ Complete | `AzureResourcePicker` |
 | Phase 2b | ✅ Complete | `GcpResourcePicker` |
-| Phase 3 | 🔜 Planned | `ObservabilityPicker`, `CICDPicker` |
+| Phase 3 | ✅ Complete | `CICDPicker`, `ObservabilityPicker` |
 | Phase 4 | 🔜 Planned | `SecurityPicker`, `ContainerPicker` |
 | Phase 5 | 🔜 Planned | Full onboarding wizard |
