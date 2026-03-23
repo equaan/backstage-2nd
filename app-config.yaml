@@ -1,9 +1,9 @@
 app:
-  title: Scaffolded Backstage App
+  title: Opt IT Developer Platform
   baseUrl: http://localhost:3000
 
 organization:
-  name: My Company
+  name: Opt IT Technologies
 
 backend:
   # Used for enabling authentication, secret is shared by all backend plugins
