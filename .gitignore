@@ -19,8 +19,13 @@ node_modules/
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
+!.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Optimization: Never commit the local install state or cache
+.yarn/cache
+.yarn/install-state.gz
 
 # Node version directives
 .nvmrc
@@ -54,5 +59,4 @@ e2e-test-report/
 # Cache
 .cache/
 ubuntu@*
-backstage-opt-it.tar.gz
-ubuntu@*
+
