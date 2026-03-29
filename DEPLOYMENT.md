@@ -45,6 +45,9 @@ Two files need updating before deployment — replace `YOUR_SERVER_IP` in both.
 app:
   title: Opt IT Developer Platform
   baseUrl: http://YOUR_SERVER_IP:7007
+  listen:
+    port: 3000
+    host: 0.0.0.0
 
 organization:
   name: Opt IT Technologies
@@ -53,6 +56,7 @@ backend:
   baseUrl: http://YOUR_SERVER_IP:7007
   listen:
     port: 7007
+    host: 0.0.0.0
   csp:
     connect-src: ["'self'", 'http:', 'https:']
     upgrade-insecure-requests: false
@@ -115,11 +119,13 @@ app:
 
 backend:
   baseUrl: http://YOUR_SERVER_IP:7007
-  listen: ':7007'
+  listen: ':
+    port: 7000
+    host: 0.0.0.0
   database:
     client: better-sqlite3
     connection:
-      directory: /home/YOUR_USERNAME/backstage-data
+      directory: /home/YOUR_USERNAME/backstage-data <----make sure to create this directory
 
 auth:
   providers:
@@ -138,6 +144,13 @@ Create the data directory:
 mkdir -p ~/backstage-data
 ```
 
+Create app-config.local.yaml:
+```yaml
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+```
 ---
 
 ## Running as a Service (systemd)
