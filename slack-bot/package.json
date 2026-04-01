@@ -1,7 +1,7 @@
 {
   "name": "slack-backstage-bot",
   "version": "1.0.0",
-  "description": "Slack bot that drives Backstage scaffolder via natural conversation",
+  "description": "Slack bot that triggers Backstage scaffolder templates via a simple state machine conversation",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
@@ -11,7 +11,6 @@
   "dependencies": {
     "@slack/bolt": "^3.17.0",
     "axios": "^1.6.0",
-    "dotenv": "^16.4.0",
-    "openai": "^4.47.1"
+    "dotenv": "^16.4.0"
   }
 }

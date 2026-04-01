@@ -1,157 +1,189 @@
 // src/index.js
-// Main entry point. Sets up the Slack Bolt app, handles all incoming messages,
-// and orchestrates the AI conversation + Backstage template triggering.
+// Main entry point. Pure state machine — no AI.
+// Each user message is an answer to the current step's question.
 
 import 'dotenv/config';
 import bolt from '@slack/bolt';
-import { chat, parseTrigger } from './ai.js';
 import { triggerTemplate, waitForTask, checkBackstageHealth } from './backstage.js';
-import { getSession, addMessage, clearSession, hasSession } from './sessions.js';
+import { startSession, getSession, hasSession, clearSession } from './sessions.js';
+import { FLOWS, TEMPLATE_META, detectTemplate, buildDefaultValues } from './flows.js';
 
 const { App } = bolt;
 
-// ── Startup checks ────────────────────────────────────────────────────────────
-if (!process.env.SLACK_BOT_TOKEN) throw new Error('Missing SLACK_BOT_TOKEN in .env');
+if (!process.env.SLACK_BOT_TOKEN)      throw new Error('Missing SLACK_BOT_TOKEN in .env');
 if (!process.env.SLACK_SIGNING_SECRET) throw new Error('Missing SLACK_SIGNING_SECRET in .env');
-if (!process.env.AI_API_KEY) throw new Error('Missing AI_API_KEY in .env');
 
-// ── Slack app setup ───────────────────────────────────────────────────────────
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
-  socketMode: false, // We use HTTP mode (Events API), not WebSocket
+  socketMode: false,
 });
 
 // ── Message handler ───────────────────────────────────────────────────────────
-// This fires when:
-// 1. Someone sends a DM directly to the bot
-// 2. Someone @mentions the bot in a channel
 app.message(async ({ message, say, client }) => {
-  // Ignore bot messages (including our own replies) to avoid loops
   if (message.bot_id || message.subtype) return;
 
-  const userId = message.user;
-  const text = (message.text || '').trim();
-
+  const userId  = message.user;
+  const text    = (message.text || '').trim();
   if (!text) return;
 
-  console.log(`[Bot] Message from ${userId}: "${text}"`);
+  console.log(`[Bot] ${userId}: "${text}"`);
+  const lowerText = text.toLowerCase();
 
-  // ── Cancel command ──────────────────────────────────────────────────────────
+  // ── Cancel ──────────────────────────────────────────────────────────────────
   const cancelWords = ['cancel', 'stop', 'nevermind', 'never mind', 'abort', 'quit', 'exit'];
-  if (cancelWords.some(w => text.toLowerCase().includes(w))) {
+  if (cancelWords.some(w => lowerText.includes(w))) {
     if (hasSession(userId)) {
       clearSession(userId);
-      await say('Cancelled. Session cleared. Say hi whenever you want to start again! 👋');
+      await say('Cancelled. Type `help` to see what I can do. 👋');
     } else {
-      await say("No active session to cancel. Say `hi` or describe what you want to set up!");
+      await say('No active session. Type `help` to see what I can do.');
     }
     return;
   }
 
-  // ── Status command ──────────────────────────────────────────────────────────
-  if (text.toLowerCase() === 'status' || text.toLowerCase() === 'help') {
-    await say(helpText());
+  // ── Help ─────────────────────────────────────────────────────────────────────
+  if (['help', 'hi', 'hello', 'hey'].includes(lowerText)) {
+    await say(buildHelpText());
     return;
   }
 
-  // ── Show typing indicator while we process ──────────────────────────────────
-  // This shows the "..." bubble in Slack while the AI thinks
-  await postTyping(client, message.channel);
+  // ── No active session — detect which template they want ──────────────────────
+  if (!hasSession(userId)) {
+    const templateKey = detectTemplate(text);
+    if (!templateKey) {
+      await say(
+        `I didn't recognise that. Here's what I can set up:\n\n${buildTemplateList()}\n\n` +
+        `Just tell me what you need — e.g. _"aws infrastructure"_ or _"onboard a client"_.`
+      );
+      return;
+    }
 
-  // ── Add user message to conversation history ────────────────────────────────
-  addMessage(userId, 'user', text);
+    startSession(userId, templateKey);
+    const meta      = TEMPLATE_META[templateKey];
+    const firstStep = FLOWS[templateKey][0];
+    await say(`${meta.emoji} *${meta.label}* — let's set this up.\n\n${firstStep.ask}`);
+    return;
+  }
+
+  // ── Active session ────────────────────────────────────────────────────────────
   const session = getSession(userId);
 
-  let aiResponse;
-  try {
-    aiResponse = await chat(session.messages);
-  } catch (err) {
-    console.error('[AI] Error:', err.message);
-    await say(`❌ AI error: ${err.message}\n\nPlease try again.`);
+  // ── Awaiting confirmation (session.step is the string 'confirm') ──────────────
+  if (session.step === 'confirm') {
+    if (['yes', 'y', 'yep', 'yeah', 'confirm', 'go', 'proceed'].includes(lowerText)) {
+      await handleTrigger(session, say, client, message.channel, userId);
+    } else if (['no', 'n', 'nope', 'change', 'edit'].includes(lowerText)) {
+      clearSession(userId);
+      await say("Okay, cancelled. Start again whenever you're ready.");
+    } else {
+      await say('Please reply `yes` to proceed or `no` to cancel.');
+    }
     return;
   }
 
-  // Store the AI's reply in conversation history
-  addMessage(userId, 'assistant', aiResponse);
+  // ── Normal step — validate and advance ───────────────────────────────────────
+  const flow        = FLOWS[session.templateName];
+  const currentStep = flow[session.step];
 
-  // ── Check if the AI wants to trigger a template ─────────────────────────────
-  const trigger = parseTrigger(aiResponse);
-
-  if (trigger) {
-    // The AI has collected all fields and the user confirmed — fire the template!
-    await handleTemplateTrigger(trigger, userId, say, client, message.channel);
-  } else {
-    // Normal conversational reply — just send it back to Slack
-    // Strip the JSON block if it accidentally appeared in a non-trigger message
-    const cleanResponse = aiResponse.replace(/```json[\s\S]*?```/g, '').trim();
-    await say(cleanResponse);
+  const error = currentStep.validate(text);
+  if (error) {
+    await say(`❌ ${error}\n\n${currentStep.ask}`);
+    return; // stay on same step, don't advance
   }
+
+  session.data[currentStep.key] = currentStep.transform(text);
+  session.step++;
+
+  // ── All steps answered — show summary ────────────────────────────────────────
+  if (session.step >= flow.length) {
+    await say(buildSummary(session.templateName, session.data));
+    session.step = 'confirm'; // switch to confirmation mode
+    return;
+  }
+
+  // ── Ask the next question ─────────────────────────────────────────────────────
+  await say(flow[session.step].ask);
 });
 
-// ── Handle the actual template trigger ───────────────────────────────────────
-async function handleTemplateTrigger(trigger, userId, say, client, channel) {
-  const { template, values } = trigger;
+// ── Trigger the template ──────────────────────────────────────────────────────
+async function handleTrigger(session, say, client, channel, userId) {
+  const { templateName, data } = session;
+  const finalValues = buildDefaultValues(templateName, data);
 
-  // Post initial "working on it" message
   const workingMsg = await say(
-    `🚀 *Triggering template: \`${template}\`*\n` +
-    `_Connecting to Backstage..._`
+    `🚀 *Triggering: \`${templateName}\`*\n_Connecting to Backstage..._`
   );
 
   let taskId;
   try {
-    taskId = await triggerTemplate(template, values);
+    taskId = await triggerTemplate(templateName, finalValues);
   } catch (err) {
-    console.error('[Backstage] Trigger error:', err.message);
-    const details = err.response?.data
-      ? `\nDetails: \`${JSON.stringify(err.response.data)}\``
-      : '';
+    console.error('[Backstage] Error:', err.message);
+    const detail = err.response?.data ? `\n\`${JSON.stringify(err.response.data)}\`` : '';
     await say(
-      `❌ *Failed to trigger template*\n` +
-      `Error: \`${err.message}\`\n\n` +
-      details +
-      `Check that Backstage is running at \`${process.env.BACKSTAGE_URL}\` and your token is valid.`
+      `❌ *Failed to trigger template*\nError: \`${err.message}\`${detail}\n\n` +
+      `Check Backstage is running at \`${process.env.BACKSTAGE_URL}\` and the token is correct.`
     );
     clearSession(userId);
     return;
   }
 
-  // Update the message to show we're polling
   await updateMessage(client, channel, workingMsg.ts,
-    `⏳ *Template running...*\n` +
-    `Task ID: \`${taskId}\`\n` +
-    `_Waiting for Backstage to complete the scaffolding..._`
+    `⏳ *Running...*\nTask: \`${taskId}\`\n_Waiting for Backstage to finish..._`
   );
 
-  // Poll until done
-  const result = await waitForTask(taskId, async (status) => {
-    console.log(`[Backstage] Task ${taskId} status: ${status}`);
+  const result = await waitForTask(taskId, status => {
+    console.log(`[Backstage] Task ${taskId}: ${status}`);
   });
 
-  // Clear the session — this conversation is done
   clearSession(userId);
 
   if (result.success) {
     const prLine = result.prUrl
-      ? `\n\n🔗 *Pull Request:* ${result.prUrl}`
-      : '\n\n_(PR link not found in task output — check Backstage UI)_';
-
+      ? `\n\n🔗 *PR opened:* ${result.prUrl}`
+      : '\n\n_(PR link not in task output — check Backstage UI)_';
     await updateMessage(client, channel, workingMsg.ts,
-      `✅ *Template completed successfully!*\n` +
-      `Template: \`${template}\`${prLine}\n\n` +
-      `The PR has been opened on the client repository. Review and merge when ready.`
+      `✅ *Done!* Template \`${templateName}\` completed.${prLine}`
     );
   } else {
     await updateMessage(client, channel, workingMsg.ts,
-      `❌ *Template failed*\n` +
-      `Failed at step: \`${result.error}\`\n\n` +
-      `Check the Backstage UI for full logs: ${process.env.BACKSTAGE_URL}/create/tasks/${taskId}`
+      `❌ *Template failed* at step: \`${result.error}\`\n` +
+      `Full logs: ${process.env.BACKSTAGE_URL}/create/tasks/${taskId}`
     );
   }
 }
 
-// ── Utility: update an existing Slack message ─────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function buildSummary(templateName, data) {
+  const meta  = TEMPLATE_META[templateName];
+  const lines = [`${meta.emoji} *${meta.label}* — ready to trigger.\n`];
+  for (const [key, value] of Object.entries(data)) {
+    lines.push(`• *${key}:* \`${value}\``);
+  }
+  lines.push('\nType `yes` to proceed or `no` to cancel.');
+  return lines.join('\n');
+}
+
+function buildHelpText() {
+  return (
+    `*Opt IT Infrastructure Bot* 🤖\n\n` +
+    `I trigger Backstage templates for you — no browser needed.\n\n` +
+    `*Available templates:*\n${buildTemplateList()}\n\n` +
+    `*Commands:*\n` +
+    `• Just say what you need — e.g. _"aws infrastructure"_ or _"onboard a client"_\n` +
+    `• \`cancel\` — abort current session\n` +
+    `• \`help\` — show this message`
+  );
+}
+
+function buildTemplateList() {
+  return Object.entries(TEMPLATE_META)
+    .map(([key, meta]) => `• ${meta.emoji} \`${key}\` — ${meta.label}`)
+    .join('\n');
+}
+
 async function updateMessage(client, channel, ts, text) {
   try {
     await client.chat.update({ channel, ts, text });
@@ -160,57 +192,18 @@ async function updateMessage(client, channel, ts, text) {
   }
 }
 
-// ── Utility: show typing indicator ────────────────────────────────────────────
-async function postTyping(client, channel) {
-  try {
-    await client.conversations.typing({ channel });
-  } catch {
-    // Typing indicator is best-effort — ignore failures
-  }
-}
-
-// ── Help text ─────────────────────────────────────────────────────────────────
-function helpText() {
-  return `*Opt IT Infrastructure Bot* 🤖
-
-I can trigger Backstage templates for you via conversation.
-
-*Available templates:*
-• \`client-onboarding\` ⭐ — Full onboarding (infra + CI/CD + observability + security + containers)
-• \`aws-infrastructure\` — AWS with Terraform or CloudFormation
-• \`azure-infrastructure\` — Azure
-• \`gcp-infrastructure\` — GCP
-• \`cicd-pipeline\` — CI/CD pipelines only
-• \`observability-stack\` — Prometheus + Grafana + Alertmanager
-• \`security-scan\` — Trivy + OWASP scanning
-• \`container-setup\` — Dockerfile, K8s, Helm
-
-*Commands:*
-• Just describe what you want — I'll ask the right questions
-• \`cancel\` — abort current session
-• \`status\` / \`help\` — show this message
-
-*Example:* _"I need to onboard a new client called acme-corp on production AWS"_`;
-}
-
-// ── Start the server ──────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────────────────────────
 (async () => {
   const port = parseInt(process.env.PORT || '3000');
 
-  // Check Backstage connectivity
   console.log(`[Startup] Checking Backstage at ${process.env.BACKSTAGE_URL}...`);
-  const backstageOk = await checkBackstageHealth();
-  if (backstageOk) {
-    console.log(`[Startup] ✅ Backstage is reachable`);
-  } else {
-    console.warn(`[Startup] ⚠️  Backstage not reachable at ${process.env.BACKSTAGE_URL}`);
-    console.warn(`[Startup]    Bot will start anyway — check your BACKSTAGE_URL in .env`);
-  }
+  const ok = await checkBackstageHealth();
+  console.log(ok
+    ? `[Startup] ✅ Backstage is reachable`
+    : `[Startup] ⚠️  Backstage not reachable — bot will start anyway`
+  );
 
   await app.start(port);
-
-  console.log(`[Startup] ✅ Slack bot running on port ${port}`);
-  console.log(`[Startup] AI provider: ${process.env.AI_PROVIDER || 'groq'}`);
-  console.log(`[Startup] Backstage URL: ${process.env.BACKSTAGE_URL}`);
-  console.log(`[Startup] Make sure Slack's Events API points to: http://YOUR-SERVER:${port}/slack/events`);
+  console.log(`[Startup] ✅ Bot running on port ${port}`);
+  console.log(`[Startup] Slack Events API URL: http://YOUR-SERVER:${port}/slack/events`);
 })();

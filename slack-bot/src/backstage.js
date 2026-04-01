@@ -1,14 +1,15 @@
 // src/backstage.js
 // Handles all communication with the Backstage scaffolder API.
 // Triggers templates, polls for completion, returns the PR URL.
+// No normalization needed here — flows.js controls the data shape exactly.
 
 import axios from 'axios';
 
 const BACKSTAGE_URL = process.env.BACKSTAGE_URL || 'http://localhost:7007';
 const BACKSTAGE_TOKEN = process.env.BACKSTAGE_TOKEN;
 
-// Map of friendly template names → Backstage template refs
-// These must match what's registered in your catalog-info.yaml
+// Map friendly template names → Backstage template refs.
+// These must match the metadata.name in your catalog-info.yaml files exactly.
 const TEMPLATE_REFS = {
   'client-onboarding':    'template:default/client-onboarding',
   'aws-infrastructure':   'template:default/aws-infrastructure',
@@ -20,28 +21,17 @@ const TEMPLATE_REFS = {
   'container-setup':      'template:default/container-setup',
 };
 
-const AWS_RESOURCE_ORDER = [
-  'vpc',
-  'subnets',
-  'security_groups',
-  'ec2',
-  's3',
-  'rds',
-];
-
 function headers() {
   return {
     'Content-Type': 'application/json',
-    // Backstage uses a static token for external API access.
-    // See README for how to configure this in your app-config.yaml.
     ...(BACKSTAGE_TOKEN && { 'Authorization': `Bearer ${BACKSTAGE_TOKEN}` }),
   };
 }
 
 /**
  * Trigger a Backstage scaffolder template.
- * @param {string} templateName - friendly name like "client-onboarding"
- * @param {object} values - the form values collected by the AI
+ * @param {string} templateName - friendly name like "aws-infrastructure"
+ * @param {object} values - the fully built values from buildDefaultValues()
  * @returns {string} taskId
  */
 export async function triggerTemplate(templateName, values) {
@@ -50,15 +40,10 @@ export async function triggerTemplate(templateName, values) {
     throw new Error(`Unknown template: "${templateName}". Available: ${Object.keys(TEMPLATE_REFS).join(', ')}`);
   }
 
-  const normalizedValues = normalizeTemplateValues(templateName, values);
+  const payload = { templateRef, values };
 
-  const payload = {
-    templateRef,
-    values: normalizedValues,
-  };
-
-  console.log(`[Backstage] Triggering template: ${templateRef}`);
-  console.log(`[Backstage] Values:`, JSON.stringify(normalizedValues, null, 2));
+  console.log(`[Backstage] Triggering: ${templateRef}`);
+  console.log(`[Backstage] Values:`, JSON.stringify(values, null, 2));
 
   const response = await axios.post(
     `${BACKSTAGE_URL}/api/scaffolder/v2/tasks`,
@@ -71,166 +56,16 @@ export async function triggerTemplate(templateName, values) {
   return taskId;
 }
 
-function normalizeTemplateValues(templateName, values) {
-  if (templateName !== 'aws-infrastructure') {
-    return values;
-  }
-
-  const normalized = { ...values };
-
-  normalized.client_name = slugify(values.client_name);
-  normalized.environment = normalizeEnvironment(values.environment);
-  normalized.aws_region = values.aws_region || 'us-east-1';
-  normalized.repoUrl = normalizeRepoUrl(values);
-  normalized.iac_tool = normalizeIacTool(values.iac_tool);
-  normalized.setup_cicd = toBoolean(values.setup_cicd);
-
-  const workflows = normalizeWorkflowList(values.github_actions_workflows);
-  if (workflows.length > 0) {
-    normalized.github_actions_workflows = workflows;
-  }
-
-  if (values.cicd_tool) {
-    normalized.cicd_tool = String(values.cicd_tool).trim().toLowerCase().replace(/\s+/g, '-');
-  }
-
-  normalized.iac_resources = normalizeAwsResources(values.iac_resources);
-
-  return normalized;
-}
-
-function normalizeAwsResources(iacResources = {}) {
-  const config = { ...(iacResources.config || {}) };
-  const resourceSet = new Set();
-
-  const addResource = value => {
-    const normalized = normalizeAwsResourceName(value);
-    if (normalized) {
-      resourceSet.add(normalized);
-    }
-  };
-
-  if (Array.isArray(iacResources.resources)) {
-    iacResources.resources.forEach(addResource);
-  } else if (typeof iacResources.resources === 'string') {
-    iacResources.resources
-      .split(/[\s,]+/)
-      .filter(Boolean)
-      .forEach(addResource);
-  }
-
-  const orderedResources = AWS_RESOURCE_ORDER.filter(resource => resourceSet.has(resource));
-
-  if (orderedResources.includes('vpc') && !config.vpc_cidr) {
-    config.vpc_cidr = '10.0.0.0/16';
-  }
-  if (orderedResources.includes('ec2') && !config.ec2_instance_type) {
-    config.ec2_instance_type = 't3.medium';
-  }
-  if (orderedResources.includes('s3') && config.s3_versioning === undefined) {
-    config.s3_versioning = true;
-  }
-  if (orderedResources.includes('rds') && !config.rds_engine) {
-    config.rds_engine = 'postgres';
-  }
-
-  return {
-    resources: orderedResources.join('_'),
-    config,
-  };
-}
-
-function normalizeAwsResourceName(value) {
-  const normalized = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[\s-]+/g, '_');
-
-  const aliases = {
-    security_group: 'security_groups',
-    security_groups: 'security_groups',
-    security: 'security_groups',
-    groups: 'security_groups',
-    subnets: 'subnets',
-    subnet: 'subnets',
-    vpc: 'vpc',
-    ec2: 'ec2',
-    s3: 's3',
-    rds: 'rds',
-  };
-
-  return aliases[normalized];
-}
-
-function normalizeWorkflowList(workflows) {
-  if (!workflows) {
-    return [];
-  }
-
-  const items = Array.isArray(workflows)
-    ? workflows
-    : String(workflows).split(/[\s,]+/).filter(Boolean);
-
-  const allowed = new Set(['build', 'test', 'deploy']);
-  const normalized = items
-    .map(item => String(item).trim().toLowerCase())
-    .filter(item => allowed.has(item));
-
-  return [...new Set(normalized)];
-}
-
-function normalizeRepoUrl(values) {
-  if (values.repoUrl) {
-    return String(values.repoUrl).trim();
-  }
-
-  if (values.github_owner && values.repo_name) {
-    return `github.com?owner=${values.github_owner}&repo=${values.repo_name}`;
-  }
-
-  return values.repoUrl;
-}
-
-function normalizeIacTool(value) {
-  return String(value || 'terraform').trim().toLowerCase();
-}
-
-function normalizeEnvironment(value) {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'production') return 'prod';
-  if (normalized === 'development') return 'dev';
-  return normalized;
-}
-
-function slugify(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function toBoolean(value) {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  const normalized = String(value || '').trim().toLowerCase();
-  return ['true', 'yes', 'y', '1'].includes(normalized);
-}
-
 /**
  * Poll a scaffolder task until it completes or fails.
  * @param {string} taskId
- * @param {function} onProgress - called with status updates while polling
+ * @param {function} onProgress - called with status string on each change
  * @returns {{ success: boolean, prUrl: string|null, error: string|null }}
  */
 export async function waitForTask(taskId, onProgress) {
-  const maxWaitMs = 5 * 60 * 1000; // 5 minutes max
-  const pollIntervalMs = 3000;      // check every 3 seconds
+  const maxWaitMs = 5 * 60 * 1000; // 5 minutes
+  const pollIntervalMs = 3000;
   const start = Date.now();
-
   let lastStatus = '';
 
   while (Date.now() - start < maxWaitMs) {
@@ -244,69 +79,68 @@ export async function waitForTask(taskId, onProgress) {
     const task = response.data;
     const status = task.status;
 
-    // Notify on status changes so we can update the Slack message
     if (status !== lastStatus) {
       lastStatus = status;
       if (onProgress) onProgress(status);
     }
 
     if (status === 'completed') {
-      // Extract the PR URL from the task output
-      const prUrl = extractPrUrl(task);
-      return { success: true, prUrl, error: null };
+      console.log(`[Backstage] Task output:`, JSON.stringify(task, null, 2));
+      return { success: true, prUrl: extractPrUrl(task), error: null };
     }
 
     if (status === 'failed') {
-      const error = task.steps?.find(s => s.status === 'failed')?.name || 'Unknown step failed';
-      return { success: false, prUrl: null, error };
+      const failedStep = task.steps?.find(s => s.status === 'failed')?.name || 'unknown step';
+      return { success: false, prUrl: null, error: failedStep };
     }
-
-    // 'processing' or 'open' = still running, keep polling
   }
 
   return { success: false, prUrl: null, error: 'Timed out after 5 minutes' };
 }
 
-/**
- * Pull the PR URL out of the task output links.
- * Backstage returns output.links[] from the template's output section.
- */
 function extractPrUrl(task) {
+  // Try to find links in the output
   const links = task.spec?.output?.links || task.output?.links || [];
-
-  // Look for a link that looks like a GitHub PR
-  const prLink = links.find(l =>
-    l.url?.includes('github.com') && l.url?.includes('/pull/')
-  );
+  const prLink = links.find(l => l.url?.includes('github.com') && l.url?.includes('/pull/'));
   if (prLink) return prLink.url;
-
-  // Fallback: return any link
   if (links.length > 0) return links[0].url;
+
+  // Check if the output directly contains a remoteUrl or prUrl
+  const output = task.spec?.output || task.output || {};
+  if (output.remoteUrl && !output.remoteUrl.includes('${{')) {
+    return output.remoteUrl;
+  }
+  if (output.prUrl && !output.prUrl.includes('${{')) {
+    return output.prUrl;
+  }
+
+  // Check task steps for any output containing a URL
+  const steps = task.steps || [];
+  for (const step of steps) {
+    if (step.output) {
+      const outputStr = typeof step.output === 'string' ? step.output : JSON.stringify(step.output);
+      const urlMatch = outputStr.match(/(https:\/\/[^\s]+)/);
+      if (urlMatch && urlMatch[1].includes('github.com')) {
+        return urlMatch[1];
+      }
+    }
+  }
 
   return null;
 }
 
 /**
- * Quick health check — verify Backstage is reachable before starting.
+ * Health check — verify Backstage is reachable before starting the bot.
  */
 export async function checkBackstageHealth() {
   try {
-    await axios.get(`${BACKSTAGE_URL}/healthcheck`, {
+    await axios.get(`${BACKSTAGE_URL}/api/catalog/entities?limit=1`, {
       headers: headers(),
       timeout: 5000,
     });
     return true;
   } catch {
-    // Try the catalog endpoint as a fallback health check
-    try {
-      await axios.get(`${BACKSTAGE_URL}/api/catalog/entities?limit=1`, {
-        headers: headers(),
-        timeout: 5000,
-      });
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }
 
