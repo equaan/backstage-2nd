@@ -23,51 +23,9 @@ This is the Backstage application that runs Opt IT's internal developer platform
 
 ## Getting Started
 
-### Prerequisites
+Deployment / download / setup instructions were moved to `DEPLOYMENT.md` to avoid duplication.
 
-- Node.js 18 or higher
-- yarn
-- Git
-- A GitHub personal access token with `repo`, `workflow`, `read:org`, `read:user` scopes
-
-### Setup
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/equaan/backstage-2nd.git
-cd backstage-2nd
-
-# 2. Install dependencies
-yarn install
-
-# 3. Start the development server
-yarn dev
-```
-
-Backstage will be available at `http://localhost:3000`.
-
-### GitHub Token Setup
-
-The scaffolder needs a GitHub token to open PRs on client repositories. Add it to `app-config.local.yaml` (this file is gitignored — never commit tokens):
-
-```yaml
-integrations:
-  github:
-    - host: github.com
-      token: ${GITHUB_TOKEN}
-```
-
-Set the environment variable before starting:
-
-```bash
-export GITHUB_TOKEN=your_token_here
-yarn dev
-```
-
-**After `yarn clean`** — templates take 60-90 seconds to reload from GitHub. If they don't appear, go to `http://localhost:3000/catalog-import` and re-register:
-```
-https://github.com/equaan/opt-it-catalog/blob/main/catalog-info.yaml
-```
+- See: `DEPLOYMENT.md`
 
 ---
 
